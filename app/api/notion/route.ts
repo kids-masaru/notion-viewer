@@ -10,12 +10,11 @@ const log = (msg: string) => {
   const line = `[${timestamp}] ${msg}\n`;
   try { fs.mkdirSync(path.dirname(logFile), { recursive: true }); } catch (_) { }
   fs.appendFileSync(logFile, line);
-  console.log(line.trim()); // also output to console for dev
+  console.log(line.trim());
 };
 
 export async function POST(req: NextRequest) {
   try {
-    // Authorization ヘッダー取得
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
       log('Missing Authorization header');
@@ -24,31 +23,26 @@ export async function POST(req: NextRequest) {
     const token = authHeader.replace('Bearer ', '');
     log(`Received token (masked): ${token.slice(0, 5)}***`);
 
-    // リクエストボディは一度だけ取得 (テキストでログ取得)
-    const rawBody = await req.text();
-    log(`Raw request body: ${rawBody}`);
-    let bodyObj: any = {};
-    try {
-      bodyObj = JSON.parse(rawBody);
-    } catch (e) {
-      log('Failed to parse JSON, falling back to req.json()');
-      bodyObj = await req.json();
-    }
-    const { database_id: rawDatabaseId, filter, sorts } = bodyObj;
+    // リクエストボディを取得（一度だけ）
+    const body = await req.json();
+    const { database_id: rawDatabaseId, filter, sorts } = body;
+
+    log(`Request body: ${JSON.stringify(body)}`);
     log(`Raw database_id input: ${rawDatabaseId}`);
+
     if (!rawDatabaseId) {
       log('Missing database_id');
       return NextResponse.json({ error: 'Missing database_id' }, { status: 400 });
     }
 
-    // ---- データベース ID 正規化 ----
+    // データベース ID 正規化
     const cleaned = rawDatabaseId.replace(/-/g, '').split('?')[0];
     const match = cleaned.match(/([a-f0-9]{32})/i);
     const databaseId = match ? match[1] : cleaned;
     if (match) {
       log(`Extracted database ID: ${databaseId}`);
     } else {
-      log('Could not extract 32‑char ID, using raw value');
+      log('Could not extract 32-char ID, using raw value');
     }
 
     // Notion SDK 初期化
@@ -61,18 +55,18 @@ export async function POST(req: NextRequest) {
     if (sorts) queryParams.sorts = sorts;
     log(`Query params: ${JSON.stringify(queryParams)}`);
 
-    // Low‑level request (fallback for missing .query)
+    // Notion API 呼び出し
     const requestPath = `databases/${databaseId}/query`;
-    log(`Calling Notion API path: ${requestPath}`);
+    log(`Calling Notion API: ${requestPath}`);
     const response = await notion.request({
       path: requestPath,
       method: 'post',
       body: queryParams,
     });
-    log('Notion API response received');
+    log('✅ Success! Notion API response received');
     return NextResponse.json(response);
   } catch (error: any) {
-    log(`Notion API Error: ${error.message || error}`);
+    log(`❌ Notion API Error: ${error.message || error}`);
     log(error.stack || 'No stack trace');
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
