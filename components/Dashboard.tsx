@@ -54,12 +54,12 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
                     }),
                 });
 
+                const json = await res.json();
+
                 if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.error || 'Failed to fetch data');
+                    throw new Error(json.error || 'Failed to fetch data');
                 }
 
-                const json = await res.json();
                 setData(json.results);
             } catch (err: any) {
                 console.error(err);
@@ -156,8 +156,8 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
                                 key={db.id}
                                 onClick={() => setActiveTabId(db.id)}
                                 className={`flex items-center px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTabId === db.id
-                                        ? 'bg-gray-900 text-white shadow-md'
-                                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                                    ? 'bg-gray-900 text-white shadow-md'
+                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                                     }`}
                             >
                                 {db.viewType === 'card' ? (
@@ -173,8 +173,8 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
                                 key={w.id}
                                 onClick={() => setActiveTabId(w.id)}
                                 className={`flex items-center px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTabId === w.id
-                                        ? 'bg-gray-900 text-white shadow-md'
-                                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                                    ? 'bg-gray-900 text-white shadow-md'
+                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                                     }`}
                             >
                                 <Globe className="w-3.5 h-3.5 mr-1.5" />
