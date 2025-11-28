@@ -10,15 +10,23 @@ export async function POST(req: NextRequest) {
 
     const token = authHeader.replace('Bearer ', '');
     const body = await req.json();
-    const { database_id, filter, sorts } = body;
+    const { database_id: raw_database_id, filter, sorts } = body;
 
-    if (!database_id) {
+    if (!raw_database_id) {
       return NextResponse.json({ error: 'Missing database_id' }, { status: 400 });
     }
 
+    // データベースIDがURL形式の場合、ID部分だけを抽出する
+    // 例: https://www.notion.so/myworkspace/a8aec43384f447ed84390e8e42c2e089?v=... -> a8aec43384f447ed84390e8e42c2e089
+    let database_id = raw_database_id;
+    const urlMatch = raw_database_id.match(/([a-f0-9]{32})/);
+    if (urlMatch) {
+      database_id = urlMatch[1];
+    }
+
+    console.log(`Debug: Raw ID=${raw_database_id}, Extracted ID=${database_id}`);
+
     const notion = new Client({ auth: token });
-    console.log('Notion Client:', notion);
-    console.log('Notion Databases:', notion.databases);
 
     const queryParams: any = {
       database_id,
