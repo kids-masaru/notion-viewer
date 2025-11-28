@@ -26,17 +26,19 @@ const DEFAULT_SETTINGS: Settings = {
     widgets: [],
 };
 
-// デフォルト設定を読み込む（config.tsがあれば）
-async function loadDefaultConfig(): Promise<Settings> {
+// デフォルト設定を読み込む（環境変数から）
+function loadDefaultConfig(): Settings {
     try {
-        const { defaultConfig } = await import('../config');
+        const envDatabases = process.env.NEXT_PUBLIC_DEFAULT_DATABASES;
+        const envWidgets = process.env.NEXT_PUBLIC_DEFAULT_WIDGETS;
+
         return {
-            apiKey: defaultConfig.apiKey || '',
-            databases: defaultConfig.databases || [],
-            widgets: defaultConfig.widgets || [],
+            apiKey: process.env.NEXT_PUBLIC_NOTION_API_KEY || '',
+            databases: envDatabases ? JSON.parse(envDatabases) : [],
+            widgets: envWidgets ? JSON.parse(envWidgets) : [],
         };
     } catch (e) {
-        // config.tsが存在しない場合は空の設定を返す
+        console.error('Failed to parse default config from env', e);
         return DEFAULT_SETTINGS;
     }
 }
@@ -46,9 +48,9 @@ export function useSettings() {
     const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
-        async function initialize() {
-            // config.tsからデフォルト設定を読み込む
-            const defaultConfig = await loadDefaultConfig();
+        function initialize() {
+            // 環境変数からデフォルト設定を読み込む
+            const defaultConfig = loadDefaultConfig();
 
             // localStorageから保存された設定を読み込む
             const stored = localStorage.getItem('notion-viewer-settings');
