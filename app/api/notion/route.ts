@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
     }
 
     const notion = new Client({ auth: token });
+    console.log('Notion Client:', notion);
+    console.log('Notion Databases:', notion.databases);
 
     const queryParams: any = {
       database_id,
@@ -25,7 +27,14 @@ export async function POST(req: NextRequest) {
     if (filter) queryParams.filter = filter;
     if (sorts) queryParams.sorts = sorts;
 
-    const response = await (notion.databases as any).query(queryParams);
+    // @ts-ignore
+    // notion.databases.queryが一部環境でundefinedになる問題の回避策として
+    // 直接APIエンドポイントを叩く notion.request を使用
+    const response = await notion.request({
+      path: `databases/${database_id}/query`,
+      method: 'post',
+      body: queryParams,
+    });
 
     return NextResponse.json(response);
   } catch (error: any) {
