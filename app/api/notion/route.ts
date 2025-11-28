@@ -40,26 +40,9 @@ export async function POST(req: NextRequest) {
     // クエリパラメータ作成
     const queryParams: any = { database_id: databaseId };
     if (filter) queryParams.filter = filter;
-    if (sorts) queryParams.sorts = sorts;
-    console.log(`[Notion API] Query params:`, JSON.stringify(queryParams));
-
-    // Notion API 呼び出し
-    const requestPath = `databases/${databaseId}/query`;
-    console.log(`[Notion API] Calling Notion API: ${requestPath}`);
-    const response = await notion.request({
-      path: requestPath,
-      method: 'post',
-      body: queryParams,
-    });
-    console.log('[Notion API] ✅ Success! Response received with', response.results?.length || 0, 'items');
-    return NextResponse.json(response);
-  } catch (error: any) {
-    console.error('[Notion API] ❌ Error:', error.message || error);
-    console.error('[Notion API] Stack:', error.stack || 'No stack trace');
-    return NextResponse.json({
-      error: error.message || 'Internal Server Error',
+    error: error.message || 'Internal Server Error',
       code: error.code || 'unknown',
-      status: error.status || 500
-    }, { status: error.status || 500 });
-  }
+        status: error.status || 500
+  }, { status: error.status || 500 });
+}
 }
