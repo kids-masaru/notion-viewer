@@ -34,16 +34,20 @@ function loadDefaultConfig(): Settings {
 
         let databases = [];
         try {
-            databases = envDatabases ? JSON.parse(envDatabases) : [];
+            const parsed = envDatabases ? JSON.parse(envDatabases) : [];
+            databases = Array.isArray(parsed) ? parsed : [];
         } catch (e) {
             console.error('Failed to parse NEXT_PUBLIC_DEFAULT_DATABASES:', envDatabases, e);
+            databases = [];
         }
 
         let widgets = [];
         try {
-            widgets = envWidgets ? JSON.parse(envWidgets) : [];
+            const parsed = envWidgets ? JSON.parse(envWidgets) : [];
+            widgets = Array.isArray(parsed) ? parsed : [];
         } catch (e) {
             console.error('Failed to parse NEXT_PUBLIC_DEFAULT_WIDGETS:', envWidgets, e);
+            widgets = [];
         }
 
         return {
