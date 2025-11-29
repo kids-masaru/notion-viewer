@@ -122,15 +122,8 @@ export default function CardView({ items, onTaskClick, visibleProperties, onStat
             case 'relation':
                 if (!property.relation || property.relation.length === 0) return null;
                 return (
-                    <div className="flex flex-wrap gap-1">
-                        {property.relation.map((rel: any, idx: number) => (
-                            <span
-                                key={rel.id || idx}
-                                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700"
-                            >
-                                {rel.id ? `📎 ${rel.id.slice(0, 8)}` : 'Linked'}
-                            </span>
-                        ))}
+                    <div className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700">
+                        📎 {property.relation.length} {property.relation.length === 1 ? 'link' : 'links'}
                     </div>
                 );
             default:

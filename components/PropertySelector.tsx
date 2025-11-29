@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Eye, Check, ChevronDown } from 'lucide-react';
+import { Eye, Check, ChevronDown, GripVertical } from 'lucide-react';
 
 interface PropertySelectorProps {
     data: any[];
@@ -9,6 +9,7 @@ interface PropertySelectorProps {
 
 export default function PropertySelector({ data, visibleProperties, onChange }: PropertySelectorProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Extract available properties from data
@@ -49,9 +50,29 @@ export default function PropertySelector({ data, visibleProperties, onChange }: 
     };
 
     const deselectAll = () => {
-        // Keep only title property if possible, but for now just clear all
-        // The parent component should handle mandatory properties
         onChange([]);
+    };
+
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        if (draggedIndex === null || draggedIndex === index) return;
+
+        const newProperties = [...visibleProperties];
+        const draggedItem = newProperties[draggedIndex];
+        newProperties.splice(draggedIndex, 1);
+        newProperties.splice(index, 0, draggedItem);
+
+        onChange(newProperties);
+        setDraggedIndex(index);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedIndex(null);
     };
 
     if (availableProperties.length === 0) return null;
@@ -71,7 +92,7 @@ export default function PropertySelector({ data, visibleProperties, onChange }: 
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                     <div className="p-2 border-b border-gray-100 flex justify-between">
                         <button
                             onClick={selectAll}
@@ -86,24 +107,56 @@ export default function PropertySelector({ data, visibleProperties, onChange }: 
                             Deselect All
                         </button>
                     </div>
-                    <div className="p-2 max-h-80 overflow-y-auto">
-                        {availableProperties.map(property => (
-                            <label
-                                key={property}
-                                onClick={() => toggleProperty(property)}
-                                className="flex items-center gap-3 px-2 py-2 hover:bg-gray-50 rounded cursor-pointer group"
-                            >
-                                <div className={`
-                                    w-4 h-4 rounded border flex items-center justify-center transition-colors
-                                    ${visibleProperties.includes(property)
-                                        ? 'bg-blue-600 border-blue-600 text-white'
-                                        : 'border-gray-300 bg-white group-hover:border-gray-400'}
-                                `}>
-                                    {visibleProperties.includes(property) && <Check className="w-3 h-3" />}
-                                </div>
-                                <span className="text-sm text-gray-700 truncate select-none">{property}</span>
-                            </label>
-                        ))}
+
+                    {/* Visible properties with drag & drop */}
+                    {visibleProperties.length > 0 && (
+                        <div className="p-2 border-b border-gray-100">
+                            <div className="text-xs font-semibold text-gray-500 px-2 py-1 mb-1">
+                                Visible Properties (Drag to reorder)
+                            </div>
+                            <div className="space-y-1">
+                                {visibleProperties.map((property, index) => (
+                                    <div
+                                        key={property}
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, index)}
+                                        onDragOver={(e) => handleDragOver(e, index)}
+                                        onDragEnd={handleDragEnd}
+                                        onClick={() => toggleProperty(property)}
+                                        className={`flex items-center gap-2 px-2 py-2 hover:bg-gray-50 rounded cursor-move group ${draggedIndex === index ? 'opacity-50' : ''
+                                            }`}
+                                    >
+                                        <GripVertical className="w-3 h-3 text-gray-400" />
+                                        <div className="w-4 h-4 flex items-center justify-center transition-colors bg-blue-600 border-blue-600 text-white rounded">
+                                            <Check className="w-3 h-3" />
+                                        </div>
+                                        <span className="text-sm text-gray-700 truncate select-none flex-1">{property}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* All available properties */}
+                    <div className="p-2 max-h-60 overflow-y-auto">
+                        {availableProperties.length > visibleProperties.length && (
+                            <div className="text-xs font-semibold text-gray-500 px-2 py-1 mb-1">
+                                Available Properties
+                            </div>
+                        )}
+                        {availableProperties
+                            .filter(prop => !visibleProperties.includes(prop))
+                            .map(property => (
+                                <label
+                                    key={property}
+                                    onClick={() => toggleProperty(property)}
+                                    className="flex items-center gap-3 px-2 py-2 hover:bg-gray-50 rounded cursor-pointer group"
+                                >
+                                    <div className="w-4 h-4 rounded border flex items-center justify-center transition-colors border-gray-300 bg-white group-hover:border-gray-400">
+                                    </div>
+                                    <span className="text-sm text-gray-700 truncate select-none">{property}</span>
+                                </label>
+                            ))}
                     </div>
                 </div>
             )}
