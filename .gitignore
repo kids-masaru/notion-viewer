@@ -42,3 +42,8 @@ config.ts
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# debug files
+debug-api.js
+debug-output.txt
+test-notion.js
