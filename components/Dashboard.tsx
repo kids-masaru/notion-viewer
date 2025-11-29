@@ -4,6 +4,7 @@ import { Settings } from '@/hooks/useSettings';
 import CardView from './CardView';
 import ListView from './ListView';
 import TaskDetailModal from './TaskDetailModal';
+import FilterBar from './FilterBar';
 
 interface DashboardProps {
     settings: Settings;
@@ -16,6 +17,7 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [modalTask, setModalTask] = useState<any | null>(null);
+    const [filterText, setFilterText] = useState('');
 
     // Set initial active tab
     useEffect(() => {
@@ -76,6 +78,53 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
         }
     }, [activeDatabase, settings.apiKey]);
 
+    // Filter data based on search text
+    const filteredData = data.filter((item) => {
+        if (!filterText) return true;
+
+        const searchLower = filterText.toLowerCase();
+
+        // Search in all properties
+        for (const [key, prop] of Object.entries(item.properties)) {
+            if (!prop) continue;
+
+            const typedProp = prop as any;
+
+            // Title
+            if (typedProp.type === 'title' && typedProp.title) {
+                const titleText = typedProp.title.map((t: any) => t.plain_text).join('').toLowerCase();
+                if (titleText.includes(searchLower)) return true;
+            }
+
+            // Rich text
+            if (typedProp.type === 'rich_text' && typedProp.rich_text) {
+                const text = typedProp.rich_text.map((t: any) => t.plain_text).join('').toLowerCase();
+                if (text.includes(searchLower)) return true;
+            }
+
+            // Select
+            if (typedProp.type === 'select' && typedProp.select?.name) {
+                if (typedProp.select.name.toLowerCase().includes(searchLower)) return true;
+            }
+
+            // Multi-select
+            if (typedProp.type === 'multi_select' && typedProp.multi_select) {
+                const hasMatch = typedProp.multi_select.some((tag: any) =>
+                    tag.name.toLowerCase().includes(searchLower)
+                );
+                if (hasMatch) return true;
+            }
+
+            // Number, email, phone, url
+            if (['number', 'email', 'phone_number', 'url'].includes(typedProp.type)) {
+                const value = String(typedProp[typedProp.type] || '').toLowerCase();
+                if (value.includes(searchLower)) return true;
+            }
+        }
+
+        return false;
+    });
+
     const renderContent = () => {
         if (!settings.apiKey && settings.databases.length > 0) {
             return (
@@ -120,9 +169,9 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
             }
 
             if (activeDatabase.viewType === 'list') {
-                return <ListView items={data} onTaskClick={setModalTask} />;
+                return <ListView items={filteredData} onTaskClick={setModalTask} />;
             }
-            return <CardView items={data} onTaskClick={setModalTask} />;
+            return <CardView items={filteredData} onTaskClick={setModalTask} />;
         }
 
         return (
@@ -185,6 +234,16 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
                         ))}
                     </div>
                 </div>
+            )}
+
+            {/* Filter Bar */}
+            {activeDatabase && (
+                <FilterBar
+                    filterText={filterText}
+                    onFilterChange={setFilterText}
+                    resultCount={filteredData.length}
+                    totalCount={data.length}
+                />
             )}
 
             {/* Content */}
