@@ -14,19 +14,24 @@ export interface WidgetConfig {
     url: string;
 }
 
+export interface DatabaseSettings {
+    visibleProperties?: string[];
+}
+
 export interface Settings {
     apiKey: string;
     databases: DatabaseConfig[];
     widgets: WidgetConfig[];
+    databaseSettings: Record<string, DatabaseSettings>;
 }
 
-const DEFAULT_SETTINGS: Settings = {
+const EMPTY_SETTINGS: Settings = {
     apiKey: '',
     databases: [],
     widgets: [],
+    databaseSettings: {},
 };
 
-// デフォルト設定を読み込む（環境変数から）
 function loadDefaultConfig(): Settings {
     try {
         const envDatabases = process.env.NEXT_PUBLIC_DEFAULT_DATABASES;
@@ -54,52 +59,54 @@ function loadDefaultConfig(): Settings {
             apiKey: process.env.NEXT_PUBLIC_NOTION_API_KEY || '',
             databases,
             widgets,
+            databaseSettings: {},
         };
     } catch (e) {
         console.error('Failed to load default config:', e);
-        return DEFAULT_SETTINGS;
+        return EMPTY_SETTINGS;
     }
 }
 
 export function useSettings() {
-    const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+    const [settings, setSettings] = useState<Settings>(EMPTY_SETTINGS);
     const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
         function initialize() {
-            // 環境変数からデフォルト設定を読み込む
-            const defaultConfig = loadDefaultConfig();
+            try {
+                const defaultConfig = loadDefaultConfig();
+                const stored = localStorage.getItem('notion-viewer-settings');
 
-            // localStorageから保存された設定を読み込む
-            const stored = localStorage.getItem('notion-viewer-settings');
-
-            if (stored) {
-                try {
-                    const parsedSettings = JSON.parse(stored);
-                    // localStorageの設定を優先し、不足部分をdefaultConfigで補完
-                    setSettings({
-                        apiKey: parsedSettings.apiKey || defaultConfig.apiKey,
-                        databases: parsedSettings.databases.length > 0
-                            ? parsedSettings.databases
-                            : defaultConfig.databases,
-                        widgets: parsedSettings.widgets.length > 0
-                            ? parsedSettings.widgets
-                            : defaultConfig.widgets,
-                    });
-                } catch (e) {
-                    console.error('Failed to parse settings', e);
+                if (stored) {
+                    try {
+                        const parsedSettings = JSON.parse(stored);
+                        setSettings({
+                            apiKey: parsedSettings.apiKey || defaultConfig.apiKey,
+                            databases: parsedSettings.databases.length > 0
+                                ? parsedSettings.databases
+                                : defaultConfig.databases,
+                            widgets: parsedSettings.widgets.length > 0
+                                ? parsedSettings.widgets
+                                : defaultConfig.widgets,
+                            databaseSettings: parsedSettings.databaseSettings || {},
+                        });
+                    } catch (e) {
+                        console.error('Failed to parse settings', e);
+                        setSettings(defaultConfig);
+                        localStorage.setItem('notion-viewer-settings', JSON.stringify(defaultConfig));
+                    }
+                } else {
+                    console.log('Initializing with default config from env:', defaultConfig);
                     setSettings(defaultConfig);
-                    // 保存
                     localStorage.setItem('notion-viewer-settings', JSON.stringify(defaultConfig));
                 }
-            } else {
-                // localStorageにない場合はdefaultConfigを使用し、保存
-                console.log('Initializing with default config from env:', defaultConfig);
-                setSettings(defaultConfig);
-                localStorage.setItem('notion-viewer-settings', JSON.stringify(defaultConfig));
+            } catch (e) {
+                console.error('Critical initialization error in useSettings:', e);
+                // Fallback to empty settings to prevent crash
+                setSettings(EMPTY_SETTINGS);
+            } finally {
+                setIsLoaded(true);
             }
-
-            setIsLoaded(true);
         }
 
         initialize();
@@ -108,6 +115,7 @@ export function useSettings() {
     const updateSettings = (newSettings: Partial<Settings>) => {
         setSettings((prev) => {
             const updated = { ...prev, ...newSettings };
+            console.log('Saving settings to localStorage:', updated);
             localStorage.setItem('notion-viewer-settings', JSON.stringify(updated));
             return updated;
         });
@@ -129,6 +137,28 @@ export function useSettings() {
         updateSettings({ widgets: settings.widgets.filter((w) => w.id !== id) });
     };
 
+    const updateDatabaseSettings = (dbId: string, dbSettings: DatabaseSettings) => {
+        setSettings((prev) => {
+            const newDatabaseSettings = {
+                ...prev.databaseSettings,
+                [dbId]: {
+                    ...prev.databaseSettings[dbId],
+                    ...dbSettings,
+                },
+            };
+
+            const updated = {
+                ...prev,
+                databaseSettings: newDatabaseSettings,
+            };
+
+            console.log('Updating database settings:', dbId, dbSettings);
+            console.log('New settings:', updated);
+            localStorage.setItem('notion-viewer-settings', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
     return {
         settings,
         isLoaded,
@@ -137,5 +167,6 @@ export function useSettings() {
         removeDatabase,
         addWidget,
         removeWidget,
+        updateDatabaseSettings,
     };
 }

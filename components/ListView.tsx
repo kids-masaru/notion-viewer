@@ -11,45 +11,107 @@ interface NotionPage {
 interface ListViewProps {
     items: NotionPage[];
     onTaskClick: (task: NotionPage) => void;
+    visibleProperties?: string[];
 }
 
-export default function ListView({ items, onTaskClick }: ListViewProps) {
+export default function ListView({ items, onTaskClick, visibleProperties }: ListViewProps) {
     const getTitle = (page: NotionPage) => {
         const titleProp = Object.values(page.properties).find((p) => p.id === 'title');
         if (!titleProp) return 'Untitled';
         return titleProp.title?.[0]?.plain_text || 'Untitled';
     };
 
-    const getDate = (page: NotionPage) => {
-        const dateProp = Object.values(page.properties).find((p) => p.type === 'date');
-        if (dateProp?.date?.start) return dateProp.date.start;
-        const createdTime = (page as any).created_time;
-        return createdTime ? createdTime.split('T')[0] : null;
+    const renderProperty = (key: string, property: any) => {
+        if (!property) return null;
+
+        switch (property.type) {
+            case 'multi_select':
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        {property.multi_select.map((tag: any) => (
+                            <span
+                                key={tag.id}
+                                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600"
+                            >
+                                {tag.name}
+                            </span>
+                        ))}
+                    </div>
+                );
+            case 'select':
+                if (!property.select) return null;
+                return (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">
+                        {property.select.name}
+                    </span>
+                );
+            case 'date':
+                if (!property.date?.start) return null;
+                return (
+                    <div className="flex items-center text-[10px] text-gray-500">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {property.date.start}
+                    </div>
+                );
+            case 'checkbox':
+                return (
+                    <div className="text-[10px] text-gray-500">
+                        {property.checkbox ? '☑ Yes' : '☐ No'}
+                    </div>
+                );
+            case 'url':
+                return property.url ? (
+                    <a href={property.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline truncate block" onClick={e => e.stopPropagation()}>
+                        {property.url}
+                    </a>
+                ) : null;
+            case 'email':
+                return property.email ? <div className="text-[10px] text-gray-500 truncate">{property.email}</div> : null;
+            case 'phone_number':
+                return property.phone_number ? <div className="text-[10px] text-gray-500">{property.phone_number}</div> : null;
+            case 'number':
+                return property.number !== null ? <div className="text-[10px] text-gray-500">{property.number}</div> : null;
+            case 'rich_text':
+                const text = property.rich_text?.map((t: any) => t.plain_text).join('');
+                return text ? <div className="text-[10px] text-gray-500 truncate">{text}</div> : null;
+            default:
+                return null;
+        }
     };
 
     return (
         <div className="flex flex-col gap-2 p-4">
             {items.map((page) => {
                 const title = getTitle(page);
-                const date = getDate(page);
 
                 return (
                     <button
                         key={page.id}
                         onClick={() => onTaskClick(page)}
-                        className="flex items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors w-full text-left cursor-pointer"
+                        className="flex items-start p-3 bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors w-full text-left cursor-pointer"
                     >
-                        <div className="mr-3 text-xl">
+                        <div className="mr-3 text-xl mt-0.5">
                             {page.icon?.emoji || <FileText className="w-5 h-5 text-gray-400" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-gray-900 text-sm truncate">{title}</h3>
-                            {date && (
-                                <div className="flex items-center text-[10px] text-gray-400 mt-0.5">
-                                    <Calendar className="w-3 h-3 mr-1" />
-                                    {date}
-                                </div>
-                            )}
+                            <h3 className="font-medium text-gray-900 text-sm truncate mb-1">{title}</h3>
+
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
+                                {visibleProperties?.map(propName => {
+                                    const property = page.properties[propName];
+                                    if (!property || property.type === 'title') return null;
+
+                                    const content = renderProperty(propName, property);
+                                    if (!content) return null;
+
+                                    return (
+                                        <div key={propName} className="flex items-center gap-1.5">
+                                            <span className="text-[9px] text-gray-400 uppercase font-semibold tracking-wider">{propName}:</span>
+                                            {content}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </button>
                 );

@@ -12,9 +12,10 @@ interface NotionPage {
 interface CardViewProps {
     items: NotionPage[];
     onTaskClick: (task: NotionPage) => void;
+    visibleProperties?: string[];
 }
 
-export default function CardView({ items, onTaskClick }: CardViewProps) {
+export default function CardView({ items, onTaskClick, visibleProperties }: CardViewProps) {
     const getTitle = (page: NotionPage) => {
         const titleProp = Object.values(page.properties).find((p) => p.id === 'title');
         if (!titleProp) return 'Untitled';
@@ -27,22 +28,62 @@ export default function CardView({ items, onTaskClick }: CardViewProps) {
         return null;
     };
 
-    const getTags = (page: NotionPage) => {
-        // Try to find a multi_select or select property
-        const tagProp = Object.values(page.properties).find(
-            (p) => p.type === 'multi_select' || p.type === 'select'
-        );
-        if (!tagProp) return [];
-        if (tagProp.type === 'multi_select') return tagProp.multi_select;
-        if (tagProp.type === 'select' && tagProp.select) return [tagProp.select];
-        return [];
-    };
+    const renderProperty = (key: string, property: any) => {
+        if (!property) return null;
 
-    const getDate = (page: NotionPage) => {
-        const dateProp = Object.values(page.properties).find((p) => p.type === 'date');
-        if (dateProp?.date?.start) return dateProp.date.start;
-        const createdTime = (page as any).created_time; // Fallback
-        return createdTime ? createdTime.split('T')[0] : null;
+        switch (property.type) {
+            case 'multi_select':
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        {property.multi_select.map((tag: any) => (
+                            <span
+                                key={tag.id}
+                                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600"
+                            >
+                                {tag.name}
+                            </span>
+                        ))}
+                    </div>
+                );
+            case 'select':
+                if (!property.select) return null;
+                return (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">
+                        {property.select.name}
+                    </span>
+                );
+            case 'date':
+                if (!property.date?.start) return null;
+                return (
+                    <div className="flex items-center text-[10px] text-gray-500">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {property.date.start}
+                    </div>
+                );
+            case 'checkbox':
+                return (
+                    <div className="text-[10px] text-gray-500">
+                        {property.checkbox ? '☑ Yes' : '☐ No'}
+                    </div>
+                );
+            case 'url':
+                return property.url ? (
+                    <a href={property.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline truncate block" onClick={e => e.stopPropagation()}>
+                        {property.url}
+                    </a>
+                ) : null;
+            case 'email':
+                return property.email ? <div className="text-[10px] text-gray-500 truncate">{property.email}</div> : null;
+            case 'phone_number':
+                return property.phone_number ? <div className="text-[10px] text-gray-500">{property.phone_number}</div> : null;
+            case 'number':
+                return property.number !== null ? <div className="text-[10px] text-gray-500">{property.number}</div> : null;
+            case 'rich_text':
+                const text = property.rich_text?.map((t: any) => t.plain_text).join('');
+                return text ? <div className="text-[10px] text-gray-500 truncate">{text}</div> : null;
+            default:
+                return null;
+        }
     };
 
     return (
@@ -50,8 +91,6 @@ export default function CardView({ items, onTaskClick }: CardViewProps) {
             {items.map((page) => {
                 const coverUrl = getCoverUrl(page);
                 const title = getTitle(page);
-                const tags = getTags(page);
-                const date = getDate(page);
 
                 return (
                     <button
@@ -75,27 +114,22 @@ export default function CardView({ items, onTaskClick }: CardViewProps) {
                                 {title}
                             </h3>
 
-                            <div className="flex flex-wrap gap-1 mb-2">
-                                {tags.map((tag: any) => (
-                                    <span
-                                        key={tag.id}
-                                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium`}
-                                        style={{
-                                            backgroundColor: tag.color === 'default' ? '#e5e7eb' : `var(--notion-${tag.color}-bg, #e5e7eb)`,
-                                            color: tag.color === 'default' ? '#374151' : `var(--notion-${tag.color}-text, #374151)`,
-                                        }}
-                                    >
-                                        {tag.name}
-                                    </span>
-                                ))}
-                            </div>
+                            <div className="space-y-1.5">
+                                {visibleProperties?.map(propName => {
+                                    const property = page.properties[propName];
+                                    if (!property || property.type === 'title') return null; // Skip title as it's already shown
 
-                            {date && (
-                                <div className="flex items-center text-[10px] text-gray-400">
-                                    <Calendar className="w-3 h-3 mr-1" />
-                                    {date}
-                                </div>
-                            )}
+                                    const content = renderProperty(propName, property);
+                                    if (!content) return null;
+
+                                    return (
+                                        <div key={propName} className="flex flex-col gap-0.5">
+                                            <span className="text-[9px] text-gray-400 uppercase font-semibold tracking-wider">{propName}</span>
+                                            {content}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </button>
                 );

@@ -6,13 +6,15 @@ import ListView from './ListView';
 import TaskDetailModal from './TaskDetailModal';
 import FilterBar from './FilterBar';
 import PropertyFilters, { PropertyFilter } from './PropertyFilters';
+import PropertySelector from './PropertySelector';
 
 interface DashboardProps {
     settings: Settings;
     onOpenSettings: () => void;
+    onUpdateDatabaseSettings: (dbId: string, settings: { visibleProperties?: string[] }) => void;
 }
 
-export default function Dashboard({ settings, onOpenSettings }: DashboardProps) {
+export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSettings }: DashboardProps) {
     const [activeTabId, setActiveTabId] = useState<string | null>(null);
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -20,6 +22,7 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
     const [modalTask, setModalTask] = useState<any | null>(null);
     const [filterText, setFilterText] = useState('');
     const [propertyFilters, setPropertyFilters] = useState<PropertyFilter[]>([]);
+    const [visibleProperties, setVisibleProperties] = useState<string[]>([]);
 
     // Set initial active tab
     useEffect(() => {
@@ -235,9 +238,21 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
             }
 
             if (activeDatabase.viewType === 'list') {
-                return <ListView items={filteredData} onTaskClick={setModalTask} />;
+                return (
+                    <ListView
+                        items={filteredData}
+                        onTaskClick={setModalTask}
+                        visibleProperties={visibleProperties}
+                    />
+                );
             }
-            return <CardView items={filteredData} onTaskClick={setModalTask} />;
+            return (
+                <CardView
+                    items={filteredData}
+                    onTaskClick={setModalTask}
+                    visibleProperties={visibleProperties}
+                />
+            );
         }
 
         return (
@@ -310,7 +325,13 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
                         onFilterChange={setFilterText}
                         resultCount={filteredData.length}
                         totalCount={data.length}
-                    />
+                    >
+                        <PropertySelector
+                            data={data}
+                            visibleProperties={visibleProperties}
+                            onChange={handleVisiblePropertiesChange}
+                        />
+                    </FilterBar>
                     <PropertyFilters
                         data={data}
                         activeFilters={propertyFilters}
