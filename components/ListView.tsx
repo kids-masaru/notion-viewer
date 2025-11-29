@@ -76,8 +76,8 @@ export default function ListView({ items, onTaskClick, visibleProperties, onStat
                     <button
                         onClick={(e) => handleStatusClick(e, pageId, key, property.status.name)}
                         className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors hover:opacity-80 ${property.status.name === 'Done' || property.status.name === 'Complete' || property.status.name === '完了' ? 'bg-green-100 text-green-700' :
-                            property.status.name === 'In Progress' || property.status.name === 'Doing' || property.status.name === '進行中' ? 'bg-blue-100 text-blue-700' :
-                                'bg-gray-100 text-gray-600'
+                                property.status.name === 'In Progress' || property.status.name === 'Doing' || property.status.name === '進行中' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-600'
                             }`}
                     >
                         {property.status.name}
@@ -106,6 +106,35 @@ export default function ListView({ items, onTaskClick, visibleProperties, onStat
             case 'email':
                 return property.email ? <div className="text-[10px] text-gray-500 truncate">{property.email}</div> : null;
             case 'phone_number':
+                return property.phone_number ? <div className="text-[10px] text-gray-500">{property.phone_number}</div> : null;
+            case 'number':
+                return property.number !== null ? <div className="text-[10px] text-gray-500">{property.number}</div> : null;
+            case 'rich_text':
+                const text = property.rich_text?.map((t: any) => t.plain_text).join('');
+                return text ? <div className="text-[10px] text-gray-500 truncate">{text}</div> : null;
+            case 'relation':
+                if (!property.relation || property.relation.length === 0) return null;
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        {property.relation.map((rel: any, idx: number) => (
+                            <span
+                                key={rel.id || idx}
+                                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700"
+                            >
+                                {rel.id ? `📎 ${rel.id.slice(0, 8)}` : 'Linked'}
+                            </span>
+                        ))}
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
+
+    return (
+        <div className="flex flex-col gap-2 p-4">
+            {items.map((page) => {
+                const title = getTitle(page);
 
                 return (
                     <button
@@ -138,8 +167,7 @@ export default function ListView({ items, onTaskClick, visibleProperties, onStat
                         </div>
                     </button>
                 );
-        })
-    }
-        </div >
+            })}
+        </div>
     );
 }
