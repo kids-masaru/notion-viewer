@@ -33,15 +33,24 @@ export default function CardView({ items, onTaskClick, visibleProperties, onStat
         e.stopPropagation();
         if (!onStatusChange) return;
 
-        // Simple toggle logic for now. 
-        // Ideally we would know all available options, but for "check" functionality:
-        // If "Done" -> "Not started"
-        // Else -> "Done"
-        // Adjust strings based on what the user likely has.
-        const isDone = currentStatus === 'Done' || currentStatus === 'Complete' || currentStatus === '完了';
-        const newStatus = isDone ? 'Not started' : 'Done';
+        // Get all unique status values from all items for this property
+        const statusOptions: string[] = [];
+        items.forEach(item => {
+            const statusProp = item.properties[propertyName];
+            if (statusProp?.type === 'status' && statusProp.status?.name) {
+                if (!statusOptions.includes(statusProp.status.name)) {
+                    statusOptions.push(statusProp.status.name);
+                }
+            }
+        });
 
-        onStatusChange(pageId, propertyName, newStatus);
+        // Cycle to the next status
+        if (statusOptions.length > 0) {
+            const currentIndex = statusOptions.indexOf(currentStatus);
+            const nextIndex = (currentIndex + 1) % statusOptions.length;
+            const newStatus = statusOptions[nextIndex];
+            onStatusChange(pageId, propertyName, newStatus);
+        }
     };
 
     const renderProperty = (key: string, property: any, pageId: string) => {

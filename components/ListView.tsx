@@ -26,10 +26,24 @@ export default function ListView({ items, onTaskClick, visibleProperties, onStat
         e.stopPropagation();
         if (!onStatusChange) return;
 
-        const isDone = currentStatus === 'Done' || currentStatus === 'Complete' || currentStatus === '完了';
-        const newStatus = isDone ? 'Not started' : 'Done';
+        // Get all unique status values from all items for this property
+        const statusOptions: string[] = [];
+        items.forEach(item => {
+            const statusProp = item.properties[propertyName];
+            if (statusProp?.type === 'status' && statusProp.status?.name) {
+                if (!statusOptions.includes(statusProp.status.name)) {
+                    statusOptions.push(statusProp.status.name);
+                }
+            }
+        });
 
-        onStatusChange(pageId, propertyName, newStatus);
+        // Cycle to the next status
+        if (statusOptions.length > 0) {
+            const currentIndex = statusOptions.indexOf(currentStatus);
+            const nextIndex = (currentIndex + 1) % statusOptions.length;
+            const newStatus = statusOptions[nextIndex];
+            onStatusChange(pageId, propertyName, newStatus);
+        }
     };
 
     const renderProperty = (key: string, property: any, pageId: string) => {
