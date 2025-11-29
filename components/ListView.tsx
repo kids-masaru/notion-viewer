@@ -10,9 +10,10 @@ interface NotionPage {
 
 interface ListViewProps {
     items: NotionPage[];
+    onTaskClick: (task: NotionPage) => void;
 }
 
-export default function ListView({ items }: ListViewProps) {
+export default function ListView({ items, onTaskClick }: ListViewProps) {
     const getTitle = (page: NotionPage) => {
         const titleProp = Object.values(page.properties).find((p) => p.id === 'title');
         if (!titleProp) return 'Untitled';
@@ -33,12 +34,10 @@ export default function ListView({ items }: ListViewProps) {
                 const date = getDate(page);
 
                 return (
-                    <a
+                    <button
                         key={page.id}
-                        href={page.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors"
+                        onClick={() => onTaskClick(page)}
+                        className="flex items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors w-full text-left cursor-pointer"
                     >
                         <div className="mr-3 text-xl">
                             {page.icon?.emoji || <FileText className="w-5 h-5 text-gray-400" />}
@@ -52,7 +51,7 @@ export default function ListView({ items }: ListViewProps) {
                                 </div>
                             )}
                         </div>
-                    </a>
+                    </button>
                 );
             })}
         </div>

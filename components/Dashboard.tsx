@@ -3,6 +3,7 @@ import { Settings as SettingsIcon, LayoutGrid, List as ListIcon, Globe } from 'l
 import { Settings } from '@/hooks/useSettings';
 import CardView from './CardView';
 import ListView from './ListView';
+import TaskDetailModal from './TaskDetailModal';
 
 interface DashboardProps {
     settings: Settings;
@@ -14,6 +15,7 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [modalTask, setModalTask] = useState<any | null>(null);
 
     // Set initial active tab
     useEffect(() => {
@@ -118,9 +120,9 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
             }
 
             if (activeDatabase.viewType === 'list') {
-                return <ListView items={data} />;
+                return <ListView items={data} onTaskClick={setModalTask} />;
             }
-            return <CardView items={data} />;
+            return <CardView items={data} onTaskClick={setModalTask} />;
         }
 
         return (
@@ -189,6 +191,9 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
             <main className="max-w-7xl mx-auto">
                 {renderContent()}
             </main>
+
+            {/* Task Detail Modal */}
+            <TaskDetailModal task={modalTask} onClose={() => setModalTask(null)} />
         </div>
     );
 }

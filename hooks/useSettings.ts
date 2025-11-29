@@ -32,13 +32,27 @@ function loadDefaultConfig(): Settings {
         const envDatabases = process.env.NEXT_PUBLIC_DEFAULT_DATABASES;
         const envWidgets = process.env.NEXT_PUBLIC_DEFAULT_WIDGETS;
 
+        let databases = [];
+        try {
+            databases = envDatabases ? JSON.parse(envDatabases) : [];
+        } catch (e) {
+            console.error('Failed to parse NEXT_PUBLIC_DEFAULT_DATABASES:', envDatabases, e);
+        }
+
+        let widgets = [];
+        try {
+            widgets = envWidgets ? JSON.parse(envWidgets) : [];
+        } catch (e) {
+            console.error('Failed to parse NEXT_PUBLIC_DEFAULT_WIDGETS:', envWidgets, e);
+        }
+
         return {
             apiKey: process.env.NEXT_PUBLIC_NOTION_API_KEY || '',
-            databases: envDatabases ? JSON.parse(envDatabases) : [],
-            widgets: envWidgets ? JSON.parse(envWidgets) : [],
+            databases,
+            widgets,
         };
     } catch (e) {
-        console.error('Failed to parse default config from env', e);
+        console.error('Failed to load default config:', e);
         return DEFAULT_SETTINGS;
     }
 }
@@ -71,10 +85,14 @@ export function useSettings() {
                 } catch (e) {
                     console.error('Failed to parse settings', e);
                     setSettings(defaultConfig);
+                    // 保存
+                    localStorage.setItem('notion-viewer-settings', JSON.stringify(defaultConfig));
                 }
             } else {
-                // localStorageにない場合はdefaultConfigを使用
+                // localStorageにない場合はdefaultConfigを使用し、保存
+                console.log('Initializing with default config from env:', defaultConfig);
                 setSettings(defaultConfig);
+                localStorage.setItem('notion-viewer-settings', JSON.stringify(defaultConfig));
             }
 
             setIsLoaded(true);

@@ -11,9 +11,10 @@ interface NotionPage {
 
 interface CardViewProps {
     items: NotionPage[];
+    onTaskClick: (task: NotionPage) => void;
 }
 
-export default function CardView({ items }: CardViewProps) {
+export default function CardView({ items, onTaskClick }: CardViewProps) {
     const getTitle = (page: NotionPage) => {
         const titleProp = Object.values(page.properties).find((p) => p.id === 'title');
         if (!titleProp) return 'Untitled';
@@ -53,12 +54,10 @@ export default function CardView({ items }: CardViewProps) {
                 const date = getDate(page);
 
                 return (
-                    <a
+                    <button
                         key={page.id}
-                        href={page.url} // Use the official Notion URL
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block break-inside-avoid bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-100"
+                        onClick={() => onTaskClick(page)}
+                        className="block break-inside-avoid bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-100 w-full text-left cursor-pointer"
                     >
                         {coverUrl && (
                             <div className="relative aspect-video w-full overflow-hidden">
@@ -98,7 +97,7 @@ export default function CardView({ items }: CardViewProps) {
                                 </div>
                             )}
                         </div>
-                    </a>
+                    </button>
                 );
             })}
         </div>

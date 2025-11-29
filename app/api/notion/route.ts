@@ -1,4 +1,3 @@
-import { Client } from '@notionhq/client';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -33,34 +32,46 @@ export async function POST(req: NextRequest) {
       console.log(`[Notion API] Could not extract 32-char ID, using raw value: ${databaseId}`);
     }
 
-    // Notion SDK 初期化
-    const notion = new Client({ auth: token });
-    console.log('[Notion API] Notion client initialized');
-
     // クエリパラメータ作成
-    const queryParams: any = { database_id: databaseId };
-    if (filter) queryParams.filter = filter;
-    if (sorts) queryParams.sorts = sorts;
-    console.log(`[Notion API] Query params:`, JSON.stringify(queryParams));
+    const queryBody: any = {};
+    if (filter) queryBody.filter = filter;
+    if (sorts) queryBody.sorts = sorts;
+    console.log(`[Notion API] Query body:`, JSON.stringify(queryBody));
 
-    // Notion API 呼び出し
-    const requestPath = `databases/${databaseId}/query`;
-    console.log(`[Notion API] Calling Notion API: ${requestPath}`);
-    const response = await notion.request({
-      path: requestPath,
-      method: 'post',
-      body: queryParams,
-    }) as any; // 型アサーションを追加
+    // Notion API 呼び出し (fetch を使用)
+    const requestUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
+    console.log(`[Notion API] Calling Notion API: ${requestUrl}`);
 
-    console.log('[Notion API] ✅ Success! Response received with', response.results?.length || 0, 'items');
-    return NextResponse.json(response);
+    const response = await fetch(requestUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(queryBody)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('[Notion API] ❌ Error:', data);
+      return NextResponse.json({
+        error: data.message || 'Notion API Error',
+        code: data.code || 'unknown',
+        status: response.status
+      }, { status: response.status });
+    }
+
+    console.log('[Notion API] ✅ Success! Response received with', data.results?.length || 0, 'items');
+    return NextResponse.json(data);
   } catch (error: any) {
     console.error('[Notion API] ❌ Error:', error.message || error);
     console.error('[Notion API] Stack:', error.stack || 'No stack trace');
     return NextResponse.json({
       error: error.message || 'Internal Server Error',
       code: error.code || 'unknown',
-      status: error.status || 500
-    }, { status: error.status || 500 });
+      status: 500
+    }, { status: 500 });
   }
 }
