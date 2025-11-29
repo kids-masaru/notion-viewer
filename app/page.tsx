@@ -6,7 +6,7 @@ import Dashboard from '@/components/Dashboard';
 import SettingsModal from '@/components/SettingsModal';
 
 export default function Home() {
-  const { settings, isLoaded, updateSettings } = useSettings();
+  const { settings, isLoaded, updateSettings, updateDatabaseSettings } = useSettings();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Open settings automatically if no API key is configured
@@ -30,6 +30,7 @@ export default function Home() {
       <Dashboard
         settings={settings}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onUpdateDatabaseSettings={updateDatabaseSettings}
       />
 
       <SettingsModal

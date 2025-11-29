@@ -13,9 +13,10 @@ interface CardViewProps {
     items: NotionPage[];
     onTaskClick: (task: NotionPage) => void;
     visibleProperties?: string[];
+    onStatusChange?: (pageId: string, propertyName: string, newStatus: string) => void;
 }
 
-export default function CardView({ items, onTaskClick, visibleProperties }: CardViewProps) {
+export default function CardView({ items, onTaskClick, visibleProperties, onStatusChange }: CardViewProps) {
     const getTitle = (page: NotionPage) => {
         const titleProp = Object.values(page.properties).find((p) => p.id === 'title');
         if (!titleProp) return 'Untitled';
@@ -28,7 +29,22 @@ export default function CardView({ items, onTaskClick, visibleProperties }: Card
         return null;
     };
 
-    const renderProperty = (key: string, property: any) => {
+    const handleStatusClick = (e: React.MouseEvent, pageId: string, propertyName: string, currentStatus: string) => {
+        e.stopPropagation();
+        if (!onStatusChange) return;
+
+        // Simple toggle logic for now. 
+        // Ideally we would know all available options, but for "check" functionality:
+        // If "Done" -> "Not started"
+        // Else -> "Done"
+        // Adjust strings based on what the user likely has.
+        const isDone = currentStatus === 'Done' || currentStatus === 'Complete' || currentStatus === '完了';
+        const newStatus = isDone ? 'Not started' : 'Done';
+
+        onStatusChange(pageId, propertyName, newStatus);
+    };
+
+    const renderProperty = (key: string, property: any, pageId: string) => {
         if (!property) return null;
 
         switch (property.type) {
@@ -51,6 +67,19 @@ export default function CardView({ items, onTaskClick, visibleProperties }: Card
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">
                         {property.select.name}
                     </span>
+                );
+            case 'status':
+                if (!property.status) return null;
+                return (
+                    <button
+                        onClick={(e) => handleStatusClick(e, pageId, key, property.status.name)}
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors hover:opacity-80 ${property.status.name === 'Done' || property.status.name === 'Complete' || property.status.name === '完了' ? 'bg-green-100 text-green-700' :
+                                property.status.name === 'In Progress' || property.status.name === 'Doing' || property.status.name === '進行中' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-600'
+                            }`}
+                    >
+                        {property.status.name}
+                    </button>
                 );
             case 'date':
                 if (!property.date?.start) return null;
@@ -119,7 +148,7 @@ export default function CardView({ items, onTaskClick, visibleProperties }: Card
                                     const property = page.properties[propName];
                                     if (!property || property.type === 'title') return null; // Skip title as it's already shown
 
-                                    const content = renderProperty(propName, property);
+                                    const content = renderProperty(propName, property, page.id);
                                     if (!content) return null;
 
                                     return (

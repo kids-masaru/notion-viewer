@@ -46,6 +46,9 @@ export default function PropertyFilters({ data, activeFilters, onFilterChange }:
             if (prop.type === 'select' && prop.select?.name) {
                 values.add(prop.select.name);
             }
+            if (prop.type === 'status' && prop.status?.name) {
+                values.add(prop.status.name);
+            }
             if (prop.type === 'multi_select' && prop.multi_select) {
                 prop.multi_select.forEach((tag: any) => values.add(tag.name));
             }
@@ -153,8 +156,8 @@ export default function PropertyFilters({ data, activeFilters, onFilterChange }:
                             );
                         }
 
-                        // Select/Multi-select filter
-                        if (prop.type === 'select' || prop.type === 'multi_select') {
+                        // Select/Multi-select/Status filter
+                        if (prop.type === 'select' || prop.type === 'multi_select' || prop.type === 'status') {
                             const options = getSelectOptions(prop.name);
                             if (options.length === 0) return null;
 

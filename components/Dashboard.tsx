@@ -7,6 +7,7 @@ import TaskDetailModal from './TaskDetailModal';
 import FilterBar from './FilterBar';
 import PropertyFilters, { PropertyFilter } from './PropertyFilters';
 import PropertySelector from './PropertySelector';
+import SortSelector from './SortSelector';
 
 interface DashboardProps {
     settings: Settings;
@@ -23,6 +24,10 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
     const [filterText, setFilterText] = useState('');
     const [propertyFilters, setPropertyFilters] = useState<PropertyFilter[]>([]);
     const [visibleProperties, setVisibleProperties] = useState<string[]>([]);
+    const [sort, setSort] = useState<{ property: string; direction: 'ascending' | 'descending' }>({
+        property: 'created_time',
+        direction: 'descending'
+    });
 
     // Set initial active tab
     useEffect(() => {
@@ -34,6 +39,15 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
             }
         }
     }, [settings.databases, settings.widgets, activeTabId]);
+
+    // Load visible properties from settings when active tab changes
+    useEffect(() => {
+        if (activeTabId && settings.databaseSettings?.[activeTabId]?.visibleProperties) {
+            setVisibleProperties(settings.databaseSettings[activeTabId].visibleProperties!);
+        } else {
+            setVisibleProperties([]);
+        }
+    }, [activeTabId, settings.databaseSettings]);
 
     const activeDatabase = settings.databases.find((db) => db.id === activeTabId);
     const activeWidget = settings.widgets.find((w) => w.id === activeTabId);
@@ -56,8 +70,9 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                         // Add sorts or filters if needed
                         sorts: [
                             {
-                                timestamp: 'created_time',
-                                direction: 'descending',
+                                property: sort.property === 'created_time' ? undefined : sort.property,
+                                timestamp: sort.property === 'created_time' ? 'created_time' : undefined,
+                                direction: sort.direction,
                             },
                         ],
                     }),
@@ -81,7 +96,65 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
         if (activeDatabase) {
             fetchData();
         }
-    }, [activeDatabase, settings.apiKey]);
+    }, [activeDatabase, settings.apiKey, sort]);
+
+    const updateTaskStatus = async (pageId: string, propertyName: string, newStatus: string) => {
+        // Optimistic update
+        setData(prevData => prevData.map(item => {
+            if (item.id === pageId) {
+                return {
+                    ...item,
+                    properties: {
+                        ...item.properties,
+                        [propertyName]: {
+                            ...item.properties[propertyName],
+                            status: {
+                                ...item.properties[propertyName].status,
+                                name: newStatus
+                            }
+                        }
+                    }
+                };
+            }
+            return item;
+        }));
+
+        try {
+            const res = await fetch('/api/notion/update', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${settings.apiKey}`,
+                },
+                body: JSON.stringify({
+                    pageId,
+                    properties: {
+                        [propertyName]: {
+                            status: {
+                                name: newStatus
+                            }
+                        }
+                    }
+                }),
+            });
+
+            if (!res.ok) {
+                throw new Error('Failed to update status');
+            }
+        } catch (err) {
+            console.error(err);
+            // Revert on error (could be improved)
+            // For now just log
+        }
+    };
+
+    const handleVisiblePropertiesChange = (properties: string[]) => {
+        setVisibleProperties(properties);
+        // Persist to local settings or backend if needed
+        if (activeDatabase) {
+            onUpdateDatabaseSettings(activeDatabase.id, { visibleProperties: properties });
+        }
+    };
 
     // Apply property filters first
     const propertyFilteredData = data.filter((item) => {
@@ -119,12 +192,15 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                 }
             }
 
-            // Select/Multi-select filter
-            if (filter.propertyType === 'select' || filter.propertyType === 'multi_select') {
+            // Select/Multi-select/Status filter
+            if (filter.propertyType === 'select' || filter.propertyType === 'multi_select' || filter.propertyType === 'status') {
                 if (!filter.values || filter.values.length === 0) return true;
 
                 if (prop.type === 'select') {
                     return filter.values.includes(prop.select?.name);
+                }
+                if (prop.type === 'status') {
+                    return filter.values.includes(prop.status?.name);
                 }
                 if (prop.type === 'multi_select') {
                     return prop.multi_select.some((tag: any) =>
@@ -174,6 +250,11 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
             // Select
             if (typedProp.type === 'select' && typedProp.select?.name) {
                 if (typedProp.select.name.toLowerCase().includes(searchLower)) return true;
+            }
+
+            // Status
+            if (typedProp.type === 'status' && typedProp.status?.name) {
+                if (typedProp.status.name.toLowerCase().includes(searchLower)) return true;
             }
 
             // Multi-select
@@ -243,6 +324,7 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                         items={filteredData}
                         onTaskClick={setModalTask}
                         visibleProperties={visibleProperties}
+                        onStatusChange={updateTaskStatus}
                     />
                 );
             }
@@ -251,6 +333,7 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                     items={filteredData}
                     onTaskClick={setModalTask}
                     visibleProperties={visibleProperties}
+                    onStatusChange={updateTaskStatus}
                 />
             );
         }
@@ -330,6 +413,11 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                             data={data}
                             visibleProperties={visibleProperties}
                             onChange={handleVisiblePropertiesChange}
+                        />
+                        <SortSelector
+                            properties={data.length > 0 ? Object.keys(data[0].properties) : []}
+                            currentSort={sort}
+                            onSortChange={setSort}
                         />
                     </FilterBar>
                     <PropertyFilters

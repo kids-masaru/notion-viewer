@@ -12,16 +12,27 @@ interface ListViewProps {
     items: NotionPage[];
     onTaskClick: (task: NotionPage) => void;
     visibleProperties?: string[];
+    onStatusChange?: (pageId: string, propertyName: string, newStatus: string) => void;
 }
 
-export default function ListView({ items, onTaskClick, visibleProperties }: ListViewProps) {
+export default function ListView({ items, onTaskClick, visibleProperties, onStatusChange }: ListViewProps) {
     const getTitle = (page: NotionPage) => {
         const titleProp = Object.values(page.properties).find((p) => p.id === 'title');
         if (!titleProp) return 'Untitled';
         return titleProp.title?.[0]?.plain_text || 'Untitled';
     };
 
-    const renderProperty = (key: string, property: any) => {
+    const handleStatusClick = (e: React.MouseEvent, pageId: string, propertyName: string, currentStatus: string) => {
+        e.stopPropagation();
+        if (!onStatusChange) return;
+
+        const isDone = currentStatus === 'Done' || currentStatus === 'Complete' || currentStatus === '完了';
+        const newStatus = isDone ? 'Not started' : 'Done';
+
+        onStatusChange(pageId, propertyName, newStatus);
+    };
+
+    const renderProperty = (key: string, property: any, pageId: string) => {
         if (!property) return null;
 
         switch (property.type) {
@@ -44,6 +55,19 @@ export default function ListView({ items, onTaskClick, visibleProperties }: List
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">
                         {property.select.name}
                     </span>
+                );
+            case 'status':
+                if (!property.status) return null;
+                return (
+                    <button
+                        onClick={(e) => handleStatusClick(e, pageId, key, property.status.name)}
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors hover:opacity-80 ${property.status.name === 'Done' || property.status.name === 'Complete' || property.status.name === '完了' ? 'bg-green-100 text-green-700' :
+                                property.status.name === 'In Progress' || property.status.name === 'Doing' || property.status.name === '進行中' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-600'
+                            }`}
+                    >
+                        {property.status.name}
+                    </button>
                 );
             case 'date':
                 if (!property.date?.start) return null;
@@ -101,7 +125,7 @@ export default function ListView({ items, onTaskClick, visibleProperties }: List
                                     const property = page.properties[propName];
                                     if (!property || property.type === 'title') return null;
 
-                                    const content = renderProperty(propName, property);
+                                    const content = renderProperty(propName, property, page.id);
                                     if (!content) return null;
 
                                     return (
