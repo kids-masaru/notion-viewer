@@ -12,9 +12,10 @@ interface PropertyFiltersProps {
     data: any[];
     activeFilters: PropertyFilter[];
     onFilterChange: (filters: PropertyFilter[]) => void;
+    selectedFilterProperties?: string[];
 }
 
-export default function PropertyFilters({ data, activeFilters, onFilterChange }: PropertyFiltersProps) {
+export default function PropertyFilters({ data, activeFilters, onFilterChange, selectedFilterProperties = [] }: PropertyFiltersProps) {
     // Extract available properties from data
     const availableProperties = useMemo(() => {
         if (data.length === 0) return [];
@@ -34,6 +35,15 @@ export default function PropertyFilters({ data, activeFilters, onFilterChange }:
 
         return properties;
     }, [data]);
+
+    // Filter to only show selected filter properties (if any selected)
+    const filteredAvailableProperties = useMemo(() => {
+        if (selectedFilterProperties.length === 0) {
+            // Show all filterable properties if none selected
+            return availableProperties;
+        }
+        return availableProperties.filter(prop => selectedFilterProperties.includes(prop.name));
+    }, [availableProperties, selectedFilterProperties]);
 
     // Extract unique values for select/multi-select properties
     const getSelectOptions = (propertyName: string) => {
@@ -125,7 +135,7 @@ export default function PropertyFilters({ data, activeFilters, onFilterChange }:
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                    {availableProperties.map(prop => {
+                    {filteredAvailableProperties.map(prop => {
                         const activeFilter = getActiveFilter(prop.name);
 
                         // Date filter

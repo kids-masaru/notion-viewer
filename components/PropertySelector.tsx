@@ -90,6 +90,7 @@ export default function PropertySelector({ data, visibleProperties, onChange }: 
                         {availableProperties.map(property => (
                             <label
                                 key={property}
+                                onClick={() => toggleProperty(property)}
                                 className="flex items-center gap-3 px-2 py-2 hover:bg-gray-50 rounded cursor-pointer group"
                             >
                                 <div className={`

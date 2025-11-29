@@ -8,11 +8,12 @@ import FilterBar from './FilterBar';
 import PropertyFilters, { PropertyFilter } from './PropertyFilters';
 import PropertySelector from './PropertySelector';
 import SortSelector from './SortSelector';
+import FilterPropertySelector from './FilterPropertySelector';
 
 interface DashboardProps {
     settings: Settings;
     onOpenSettings: () => void;
-    onUpdateDatabaseSettings: (dbId: string, settings: { visibleProperties?: string[] }) => void;
+    onUpdateDatabaseSettings: (dbId: string, settings: { visibleProperties?: string[]; filterProperties?: string[] }) => void;
 }
 
 export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSettings }: DashboardProps) {
@@ -24,6 +25,7 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
     const [filterText, setFilterText] = useState('');
     const [propertyFilters, setPropertyFilters] = useState<PropertyFilter[]>([]);
     const [visibleProperties, setVisibleProperties] = useState<string[]>([]);
+    const [filterProperties, setFilterProperties] = useState<string[]>([]);
     const [sort, setSort] = useState<{ property: string; direction: 'ascending' | 'descending' }>({
         property: 'created_time',
         direction: 'descending'
@@ -46,6 +48,16 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
             setVisibleProperties(settings.databaseSettings[activeTabId].visibleProperties!);
         } else {
             setVisibleProperties([]);
+        }
+    }, [activeTabId, settings.databaseSettings]);
+
+    // Load filter properties from settings when active tab changes
+    useEffect(() => {
+        if (activeTabId && settings.databaseSettings?.[activeTabId]?.filterProperties) {
+            setFilterProperties(settings.databaseSettings[activeTabId].filterProperties!);
+        } else {
+            // Default to all filterable properties
+            setFilterProperties([]);
         }
     }, [activeTabId, settings.databaseSettings]);
 
@@ -150,9 +162,17 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
 
     const handleVisiblePropertiesChange = (properties: string[]) => {
         setVisibleProperties(properties);
-        // Persist to local settings or backend if needed
+        // Persist to local settings
         if (activeDatabase) {
             onUpdateDatabaseSettings(activeDatabase.id, { visibleProperties: properties });
+        }
+    };
+
+    const handleFilterPropertiesChange = (properties: string[]) => {
+        setFilterProperties(properties);
+        // Persist to local settings
+        if (activeDatabase) {
+            onUpdateDatabaseSettings(activeDatabase.id, { filterProperties: properties });
         }
     };
 
@@ -419,11 +439,22 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                             currentSort={sort}
                             onSortChange={setSort}
                         />
+                        <FilterPropertySelector
+                            availableProperties={data.length > 0 ?
+                                Object.entries(data[0].properties).map(([name, prop]: [string, any]) => ({
+                                    name,
+                                    type: prop.type
+                                })) : []
+                            }
+                            selectedFilterProperties={filterProperties}
+                            onChange={handleFilterPropertiesChange}
+                        />
                     </FilterBar>
                     <PropertyFilters
                         data={data}
                         activeFilters={propertyFilters}
                         onFilterChange={setPropertyFilters}
+                        selectedFilterProperties={filterProperties}
                     />
                 </>
             )}

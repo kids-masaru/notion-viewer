@@ -16,6 +16,7 @@ export interface WidgetConfig {
 
 export interface DatabaseSettings {
     visibleProperties?: string[];
+    filterProperties?: string[];
 }
 
 export interface Settings {
