@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, LayoutGrid, List as ListIcon, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, LayoutGrid, List as ListIcon, ArrowUpDown } from 'lucide-react';
 import { Settings } from '@/hooks/useSettings';
 import CardView from './CardView';
 import ListView from './ListView';
@@ -30,17 +30,14 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
         property: 'created_time',
         direction: 'descending'
     });
+    const [isWidgetsOnTop, setIsWidgetsOnTop] = useState(true);
 
-    // Set initial active tab
+    // Set initial active tab (only databases)
     useEffect(() => {
-        if (!activeTabId) {
-            if (settings.databases.length > 0) {
-                setActiveTabId(settings.databases[0].id);
-            } else if (settings.widgets.length > 0) {
-                setActiveTabId(settings.widgets[0].id);
-            }
+        if (!activeTabId && settings.databases.length > 0) {
+            setActiveTabId(settings.databases[0].id);
         }
-    }, [settings.databases, settings.widgets, activeTabId]);
+    }, [settings.databases, activeTabId]);
 
     // Load visible properties from settings when active tab changes
     useEffect(() => {
@@ -62,7 +59,6 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
     }, [activeTabId, settings.databaseSettings]);
 
     const activeDatabase = settings.databases.find((db) => db.id === activeTabId);
-    const activeWidget = settings.widgets.find((w) => w.id === activeTabId);
 
     useEffect(() => {
         async function fetchData() {
@@ -295,7 +291,27 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
         return false;
     });
 
-    const renderContent = () => {
+    const renderWidgets = () => {
+        if (settings.widgets.length === 0) return null;
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 mb-6">
+                {settings.widgets.map((widget) => (
+                    <div key={widget.id} className="w-full h-80 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                        <iframe
+                            src={widget.url}
+                            className="w-full h-full border-0"
+                            title={widget.name}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        />
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    const renderDatabaseContent = () => {
         if (!settings.apiKey && settings.databases.length > 0) {
             return (
                 <div className="flex flex-col items-center justify-center h-64 text-gray-500">
@@ -303,20 +319,6 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                     <button onClick={onOpenSettings} className="mt-4 text-blue-600 font-medium">
                         Open Settings
                     </button>
-                </div>
-            );
-        }
-
-        if (activeWidget) {
-            return (
-                <div className="w-full h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 mt-4">
-                    <iframe
-                        src={activeWidget.url}
-                        className="w-full h-full border-0"
-                        title={activeWidget.name}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                    />
                 </div>
             );
         }
@@ -358,110 +360,191 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
             );
         }
 
-        return (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-                <LayoutGrid className="w-12 h-12 mb-2 opacity-20" />
-                <p>No databases or widgets configured.</p>
-                <button onClick={onOpenSettings} className="mt-4 text-blue-600 font-medium">
-                    Add Content
-                </button>
-            </div>
-        );
+        if (settings.databases.length === 0) {
+            return (
+                <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                    <LayoutGrid className="w-12 h-12 mb-2 opacity-20" />
+                    <p>No databases configured.</p>
+                    <button onClick={onOpenSettings} className="mt-4 text-blue-600 font-medium">
+                        Add Content
+                    </button>
+                </div>
+            );
+        }
+
+        return null;
     };
 
     return (
         <div className="min-h-screen pb-20">
             {/* Header */}
-            <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+            <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between mb-4">
                 <h1 className="text-xl font-bold text-gray-900 tracking-tight">My Dashboard</h1>
-                <button
-                    onClick={onOpenSettings}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                    <SettingsIcon className="w-5 h-5 text-gray-600" />
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsWidgetsOnTop(!isWidgetsOnTop)}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
+                        title="Swap Layout"
+                    >
+                        <ArrowUpDown className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={onOpenSettings}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                        <SettingsIcon className="w-5 h-5 text-gray-600" />
+                    </button>
+                </div>
             </header>
 
-            {/* Tabs */}
-            {(settings.databases.length > 0 || settings.widgets.length > 0) && (
-                <div className="px-4 py-3 overflow-x-auto no-scrollbar">
-                    <div className="flex gap-2">
-                        {settings.databases.map((db) => (
-                            <button
-                                key={db.id}
-                                onClick={() => setActiveTabId(db.id)}
-                                className={`flex items-center px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTabId === db.id
-                                    ? 'bg-gray-900 text-white shadow-md'
-                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                                    }`}
-                            >
-                                {db.viewType === 'card' ? (
-                                    <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
-                                ) : (
-                                    <ListIcon className="w-3.5 h-3.5 mr-1.5" />
-                                )}
-                                {db.name}
-                            </button>
-                        ))}
-                        {settings.widgets.map((w) => (
-                            <button
-                                key={w.id}
-                                onClick={() => setActiveTabId(w.id)}
-                                className={`flex items-center px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTabId === w.id
-                                    ? 'bg-gray-900 text-white shadow-md'
-                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <Globe className="w-3.5 h-3.5 mr-1.5" />
-                                {w.name}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Filter Bar */}
-            {activeDatabase && (
-                <>
-                    <FilterBar
-                        filterText={filterText}
-                        onFilterChange={setFilterText}
-                        resultCount={filteredData.length}
-                        totalCount={data.length}
-                    >
-                        <PropertySelector
-                            data={data}
-                            visibleProperties={visibleProperties}
-                            onChange={handleVisiblePropertiesChange}
-                        />
-                        <SortSelector
-                            properties={data.length > 0 ? Object.keys(data[0].properties) : []}
-                            currentSort={sort}
-                            onSortChange={setSort}
-                        />
-                        <FilterPropertySelector
-                            availableProperties={data.length > 0 ?
-                                Object.entries(data[0].properties).map(([name, prop]: [string, any]) => ({
-                                    name,
-                                    type: prop.type
-                                })) : []
-                            }
-                            selectedFilterProperties={filterProperties}
-                            onChange={handleFilterPropertiesChange}
-                        />
-                    </FilterBar>
-                    <PropertyFilters
-                        data={data}
-                        activeFilters={propertyFilters}
-                        onFilterChange={setPropertyFilters}
-                        selectedFilterProperties={filterProperties}
-                    />
-                </>
-            )}
-
-            {/* Content */}
             <main className="max-w-7xl mx-auto">
-                {renderContent()}
+                {isWidgetsOnTop ? (
+                    <>
+                        {renderWidgets()}
+
+                        {/* Database Section */}
+                        <div className="px-4">
+                            {/* Tabs */}
+                            {settings.databases.length > 0 && (
+                                <div className="mb-4 overflow-x-auto no-scrollbar">
+                                    <div className="flex gap-2">
+                                        {settings.databases.map((db) => (
+                                            <button
+                                                key={db.id}
+                                                onClick={() => setActiveTabId(db.id)}
+                                                className={`flex items-center px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTabId === db.id
+                                                    ? 'bg-gray-900 text-white shadow-md'
+                                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                {db.viewType === 'card' ? (
+                                                    <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
+                                                ) : (
+                                                    <ListIcon className="w-3.5 h-3.5 mr-1.5" />
+                                                )}
+                                                {db.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Filter Bar */}
+                            {activeDatabase && (
+                                <div className="mb-4">
+                                    <FilterBar
+                                        filterText={filterText}
+                                        onFilterChange={setFilterText}
+                                        resultCount={filteredData.length}
+                                        totalCount={data.length}
+                                    >
+                                        <PropertySelector
+                                            data={data}
+                                            visibleProperties={visibleProperties}
+                                            onChange={handleVisiblePropertiesChange}
+                                        />
+                                        <SortSelector
+                                            properties={data.length > 0 ? Object.keys(data[0].properties) : []}
+                                            currentSort={sort}
+                                            onSortChange={setSort}
+                                        />
+                                        <FilterPropertySelector
+                                            availableProperties={data.length > 0 ?
+                                                Object.entries(data[0].properties).map(([name, prop]: [string, any]) => ({
+                                                    name,
+                                                    type: prop.type
+                                                })) : []
+                                            }
+                                            selectedFilterProperties={filterProperties}
+                                            onChange={handleFilterPropertiesChange}
+                                        />
+                                    </FilterBar>
+                                    <PropertyFilters
+                                        data={data}
+                                        activeFilters={propertyFilters}
+                                        onFilterChange={setPropertyFilters}
+                                        selectedFilterProperties={filterProperties}
+                                    />
+                                </div>
+                            )}
+
+                            {renderDatabaseContent()}
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        {/* Database Section */}
+                        <div className="px-4 mb-8">
+                            {/* Tabs */}
+                            {settings.databases.length > 0 && (
+                                <div className="mb-4 overflow-x-auto no-scrollbar">
+                                    <div className="flex gap-2">
+                                        {settings.databases.map((db) => (
+                                            <button
+                                                key={db.id}
+                                                onClick={() => setActiveTabId(db.id)}
+                                                className={`flex items-center px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTabId === db.id
+                                                    ? 'bg-gray-900 text-white shadow-md'
+                                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                {db.viewType === 'card' ? (
+                                                    <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
+                                                ) : (
+                                                    <ListIcon className="w-3.5 h-3.5 mr-1.5" />
+                                                )}
+                                                {db.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Filter Bar */}
+                            {activeDatabase && (
+                                <div className="mb-4">
+                                    <FilterBar
+                                        filterText={filterText}
+                                        onFilterChange={setFilterText}
+                                        resultCount={filteredData.length}
+                                        totalCount={data.length}
+                                    >
+                                        <PropertySelector
+                                            data={data}
+                                            visibleProperties={visibleProperties}
+                                            onChange={handleVisiblePropertiesChange}
+                                        />
+                                        <SortSelector
+                                            properties={data.length > 0 ? Object.keys(data[0].properties) : []}
+                                            currentSort={sort}
+                                            onSortChange={setSort}
+                                        />
+                                        <FilterPropertySelector
+                                            availableProperties={data.length > 0 ?
+                                                Object.entries(data[0].properties).map(([name, prop]: [string, any]) => ({
+                                                    name,
+                                                    type: prop.type
+                                                })) : []
+                                            }
+                                            selectedFilterProperties={filterProperties}
+                                            onChange={handleFilterPropertiesChange}
+                                        />
+                                    </FilterBar>
+                                    <PropertyFilters
+                                        data={data}
+                                        activeFilters={propertyFilters}
+                                        onFilterChange={setPropertyFilters}
+                                        selectedFilterProperties={filterProperties}
+                                    />
+                                </div>
+                            )}
+
+                            {renderDatabaseContent()}
+                        </div>
+
+                        {renderWidgets()}
+                    </>
+                )}
             </main>
 
             {/* Task Detail Modal */}
