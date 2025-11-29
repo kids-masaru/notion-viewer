@@ -5,6 +5,7 @@ import CardView from './CardView';
 import ListView from './ListView';
 import TaskDetailModal from './TaskDetailModal';
 import FilterBar from './FilterBar';
+import PropertyFilters, { PropertyFilter } from './PropertyFilters';
 
 interface DashboardProps {
     settings: Settings;
@@ -18,6 +19,7 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
     const [error, setError] = useState<string | null>(null);
     const [modalTask, setModalTask] = useState<any | null>(null);
     const [filterText, setFilterText] = useState('');
+    const [propertyFilters, setPropertyFilters] = useState<PropertyFilter[]>([]);
 
     // Set initial active tab
     useEffect(() => {
@@ -78,8 +80,72 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
         }
     }, [activeDatabase, settings.apiKey]);
 
-    // Filter data based on search text
-    const filteredData = data.filter((item) => {
+    // Apply property filters first
+    const propertyFilteredData = data.filter((item) => {
+        if (propertyFilters.length === 0) return true;
+
+        return propertyFilters.every(filter => {
+            const prop = item.properties[filter.propertyName] as any;
+            if (!prop) return false;
+
+            // Date filter
+            if (filter.propertyType === 'date') {
+                if (!prop.date?.start) return false;
+                const itemDate = new Date(prop.date.start);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                switch (filter.condition) {
+                    case 'today':
+                        return itemDate.toDateString() === today.toDateString();
+                    case 'this_week':
+                        const weekStart = new Date(today);
+                        weekStart.setDate(today.getDate() - today.getDay());
+                        const weekEnd = new Date(weekStart);
+                        weekEnd.setDate(weekStart.getDate() + 7);
+                        return itemDate >= weekStart && itemDate < weekEnd;
+                    case 'this_month':
+                        return itemDate.getMonth() === today.getMonth() &&
+                            itemDate.getFullYear() === today.getFullYear();
+                    case 'past':
+                        return itemDate < today;
+                    case 'future':
+                        return itemDate > today;
+                    default:
+                        return true;
+                }
+            }
+
+            // Select/Multi-select filter
+            if (filter.propertyType === 'select' || filter.propertyType === 'multi_select') {
+                if (!filter.values || filter.values.length === 0) return true;
+
+                if (prop.type === 'select') {
+                    return filter.values.includes(prop.select?.name);
+                }
+                if (prop.type === 'multi_select') {
+                    return prop.multi_select.some((tag: any) =>
+                        filter.values!.includes(tag.name)
+                    );
+                }
+            }
+
+            // Checkbox filter
+            if (filter.propertyType === 'checkbox') {
+                if (filter.condition === 'checked') {
+                    return prop.checkbox === true;
+                }
+                if (filter.condition === 'unchecked') {
+                    return prop.checkbox === false;
+                }
+            }
+
+            return true;
+        });
+    });
+
+    // Then apply text search filter
+    const filteredData = propertyFilteredData.filter((item) => {
         if (!filterText) return true;
 
         const searchLower = filterText.toLowerCase();
@@ -238,12 +304,19 @@ export default function Dashboard({ settings, onOpenSettings }: DashboardProps) 
 
             {/* Filter Bar */}
             {activeDatabase && (
-                <FilterBar
-                    filterText={filterText}
-                    onFilterChange={setFilterText}
-                    resultCount={filteredData.length}
-                    totalCount={data.length}
-                />
+                <>
+                    <FilterBar
+                        filterText={filterText}
+                        onFilterChange={setFilterText}
+                        resultCount={filteredData.length}
+                        totalCount={data.length}
+                    />
+                    <PropertyFilters
+                        data={data}
+                        activeFilters={propertyFilters}
+                        onFilterChange={setPropertyFilters}
+                    />
+                </>
             )}
 
             {/* Content */}
