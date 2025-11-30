@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, LayoutGrid, List as ListIcon, ArrowUpDown } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Settings as SettingsIcon, LayoutGrid, List as ListIcon, ArrowUpDown, RefreshCw } from 'lucide-react';
 import { Settings } from '@/hooks/useSettings';
 import CardView from './CardView';
 import ListView from './ListView';
@@ -31,6 +31,7 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
         direction: 'descending'
     });
     const [isWidgetsOnTop, setIsWidgetsOnTop] = useState(true);
+    const [showViewSettings, setShowViewSettings] = useState(false);
 
     // Set initial active tab (only databases)
     useEffect(() => {
@@ -60,51 +61,55 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
 
     const activeDatabase = settings.databases.find((db) => db.id === activeTabId);
 
-    useEffect(() => {
-        async function fetchData() {
-            if (!activeDatabase || !settings.apiKey) return;
+    const fetchData = useCallback(async () => {
+        if (!activeDatabase || !settings.apiKey) return;
 
-            setLoading(true);
-            setError(null);
-            try {
-                const res = await fetch('/api/notion', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${settings.apiKey}`,
-                    },
-                    body: JSON.stringify({
-                        database_id: activeDatabase.id,
-                        // Add sorts or filters if needed
-                        sorts: [
-                            {
-                                property: sort.property === 'created_time' ? undefined : sort.property,
-                                timestamp: sort.property === 'created_time' ? 'created_time' : undefined,
-                                direction: sort.direction,
-                            },
-                        ],
-                    }),
-                });
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch('/api/notion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${settings.apiKey}`,
+                },
+                body: JSON.stringify({
+                    database_id: activeDatabase.id,
+                    // Add sorts or filters if needed
+                    sorts: [
+                        {
+                            property: sort.property === 'created_time' ? undefined : sort.property,
+                            timestamp: sort.property === 'created_time' ? 'created_time' : undefined,
+                            direction: sort.direction,
+                        },
+                    ],
+                }),
+            });
 
-                const json = await res.json();
+            const json = await res.json();
 
-                if (!res.ok) {
-                    throw new Error(json.error || 'Failed to fetch data');
-                }
-
-                setData(json.results);
-            } catch (err: any) {
-                console.error(err);
-                setError(err.message);
-            } finally {
-                setLoading(false);
+            if (!res.ok) {
+                throw new Error(json.error || 'Failed to fetch data');
             }
-        }
 
+            setData(json.results);
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [activeDatabase, settings.apiKey, sort]);
+
+    useEffect(() => {
         if (activeDatabase) {
             fetchData();
         }
-    }, [activeDatabase, settings.apiKey, sort]);
+    }, [fetchData, activeDatabase]);
+
+    const handleRefresh = () => {
+        fetchData();
+    };
 
     const updateTaskStatus = async (pageId: string, propertyName: string, newStatus: string) => {
         // Optimistic update
@@ -334,8 +339,14 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
 
             if (error) {
                 return (
-                    <div className="p-4 bg-red-50 text-red-600 rounded-xl mt-4 border border-red-100">
-                        Error: {error}
+                    <div className="p-4 bg-red-50 text-red-600 rounded-xl mt-4 border border-red-100 flex justify-between items-center">
+                        <span>Error: {error}</span>
+                        <button
+                            onClick={handleRefresh}
+                            className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium transition-colors"
+                        >
+                            Retry
+                        </button>
                     </div>
                 );
             }
@@ -389,6 +400,14 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                         <ArrowUpDown className="w-5 h-5" />
                     </button>
                     <button
+                        onClick={handleRefresh}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
+                        title="Refresh Data"
+                        disabled={loading}
+                    >
+                        <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button
                         onClick={onOpenSettings}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                     >
@@ -437,34 +456,42 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                                         onFilterChange={setFilterText}
                                         resultCount={filteredData.length}
                                         totalCount={data.length}
+                                        onToggleSettings={() => setShowViewSettings(!showViewSettings)}
+                                        isSettingsOpen={showViewSettings}
                                     >
-                                        <PropertySelector
-                                            data={data}
-                                            visibleProperties={visibleProperties}
-                                            onChange={handleVisiblePropertiesChange}
-                                        />
-                                        <SortSelector
-                                            properties={data.length > 0 ? Object.keys(data[0].properties) : []}
-                                            currentSort={sort}
-                                            onSortChange={setSort}
-                                        />
-                                        <FilterPropertySelector
-                                            availableProperties={data.length > 0 ?
-                                                Object.entries(data[0].properties).map(([name, prop]: [string, any]) => ({
-                                                    name,
-                                                    type: prop.type
-                                                })) : []
-                                            }
-                                            selectedFilterProperties={filterProperties}
-                                            onChange={handleFilterPropertiesChange}
-                                        />
+                                        {showViewSettings && (
+                                            <>
+                                                <PropertySelector
+                                                    data={data}
+                                                    visibleProperties={visibleProperties}
+                                                    onChange={handleVisiblePropertiesChange}
+                                                />
+                                                <SortSelector
+                                                    properties={data.length > 0 ? Object.keys(data[0].properties) : []}
+                                                    currentSort={sort}
+                                                    onSortChange={setSort}
+                                                />
+                                                <FilterPropertySelector
+                                                    availableProperties={data.length > 0 ?
+                                                        Object.entries(data[0].properties).map(([name, prop]: [string, any]) => ({
+                                                            name,
+                                                            type: prop.type
+                                                        })) : []
+                                                    }
+                                                    selectedFilterProperties={filterProperties}
+                                                    onChange={handleFilterPropertiesChange}
+                                                />
+                                            </>
+                                        )}
                                     </FilterBar>
-                                    <PropertyFilters
-                                        data={data}
-                                        activeFilters={propertyFilters}
-                                        onFilterChange={setPropertyFilters}
-                                        selectedFilterProperties={filterProperties}
-                                    />
+                                    {showViewSettings && (
+                                        <PropertyFilters
+                                            data={data}
+                                            activeFilters={propertyFilters}
+                                            onFilterChange={setPropertyFilters}
+                                            selectedFilterProperties={filterProperties}
+                                        />
+                                    )}
                                 </div>
                             )}
 
@@ -508,34 +535,42 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                                         onFilterChange={setFilterText}
                                         resultCount={filteredData.length}
                                         totalCount={data.length}
+                                        onToggleSettings={() => setShowViewSettings(!showViewSettings)}
+                                        isSettingsOpen={showViewSettings}
                                     >
-                                        <PropertySelector
-                                            data={data}
-                                            visibleProperties={visibleProperties}
-                                            onChange={handleVisiblePropertiesChange}
-                                        />
-                                        <SortSelector
-                                            properties={data.length > 0 ? Object.keys(data[0].properties) : []}
-                                            currentSort={sort}
-                                            onSortChange={setSort}
-                                        />
-                                        <FilterPropertySelector
-                                            availableProperties={data.length > 0 ?
-                                                Object.entries(data[0].properties).map(([name, prop]: [string, any]) => ({
-                                                    name,
-                                                    type: prop.type
-                                                })) : []
-                                            }
-                                            selectedFilterProperties={filterProperties}
-                                            onChange={handleFilterPropertiesChange}
-                                        />
+                                        {showViewSettings && (
+                                            <>
+                                                <PropertySelector
+                                                    data={data}
+                                                    visibleProperties={visibleProperties}
+                                                    onChange={handleVisiblePropertiesChange}
+                                                />
+                                                <SortSelector
+                                                    properties={data.length > 0 ? Object.keys(data[0].properties) : []}
+                                                    currentSort={sort}
+                                                    onSortChange={setSort}
+                                                />
+                                                <FilterPropertySelector
+                                                    availableProperties={data.length > 0 ?
+                                                        Object.entries(data[0].properties).map(([name, prop]: [string, any]) => ({
+                                                            name,
+                                                            type: prop.type
+                                                        })) : []
+                                                    }
+                                                    selectedFilterProperties={filterProperties}
+                                                    onChange={handleFilterPropertiesChange}
+                                                />
+                                            </>
+                                        )}
                                     </FilterBar>
-                                    <PropertyFilters
-                                        data={data}
-                                        activeFilters={propertyFilters}
-                                        onFilterChange={setPropertyFilters}
-                                        selectedFilterProperties={filterProperties}
-                                    />
+                                    {showViewSettings && (
+                                        <PropertyFilters
+                                            data={data}
+                                            activeFilters={propertyFilters}
+                                            onFilterChange={setPropertyFilters}
+                                            selectedFilterProperties={filterProperties}
+                                        />
+                                    )}
                                 </div>
                             )}
 

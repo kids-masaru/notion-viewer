@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, SlidersHorizontal } from 'lucide-react';
 
 interface FilterBarProps {
     filterText: string;
@@ -7,9 +7,11 @@ interface FilterBarProps {
     resultCount: number;
     totalCount: number;
     children?: React.ReactNode;
+    onToggleSettings?: () => void;
+    isSettingsOpen?: boolean;
 }
 
-export default function FilterBar({ filterText, onFilterChange, resultCount, totalCount, children }: FilterBarProps) {
+export default function FilterBar({ filterText, onFilterChange, resultCount, totalCount, children, onToggleSettings, isSettingsOpen }: FilterBarProps) {
     return (
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
             <div className="max-w-7xl mx-auto">
@@ -32,6 +34,18 @@ export default function FilterBar({ filterText, onFilterChange, resultCount, tot
                             </button>
                         )}
                     </div>
+                    {onToggleSettings && (
+                        <button
+                            onClick={onToggleSettings}
+                            className={`p-2 rounded-lg border transition-colors ${isSettingsOpen
+                                ? 'bg-gray-900 text-white border-gray-900'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                }`}
+                            title="View Settings"
+                        >
+                            <SlidersHorizontal className="w-5 h-5" />
+                        </button>
+                    )}
                     {children}
                 </div>
                 {filterText && (

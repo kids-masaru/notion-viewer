@@ -47,3 +47,5 @@ next-env.d.ts
 debug-api.js
 debug-output.txt
 test-notion.js
+
+.vercel

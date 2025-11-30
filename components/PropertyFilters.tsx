@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Calendar, Tag, CheckSquare, Filter, X } from 'lucide-react';
 
 export interface PropertyFilter {
@@ -16,6 +16,8 @@ interface PropertyFiltersProps {
 }
 
 export default function PropertyFilters({ data, activeFilters, onFilterChange, selectedFilterProperties = [] }: PropertyFiltersProps) {
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
     // Extract available properties from data
     const availableProperties = useMemo(() => {
         if (data.length === 0) return [];
@@ -171,9 +173,15 @@ export default function PropertyFilters({ data, activeFilters, onFilterChange, s
                             const options = getSelectOptions(prop.name);
                             if (options.length === 0) return null;
 
+                            const isOpen = openDropdown === prop.name;
+
                             return (
-                                <div key={prop.name} className="relative group">
-                                    <button className="flex items-center gap-2 text-xs border border-gray-200 rounded px-2 py-1 hover:bg-gray-100 transition-colors">
+                                <div key={prop.name} className="relative">
+                                    <button
+                                        onClick={() => setOpenDropdown(isOpen ? null : prop.name)}
+                                        className={`flex items-center gap-2 text-xs border rounded px-2 py-1 transition-colors ${isOpen ? 'bg-gray-100 border-gray-300' : 'border-gray-200 hover:bg-gray-50'
+                                            }`}
+                                    >
                                         <Tag className="w-3.5 h-3.5 text-gray-400" />
                                         <span className="text-gray-600">{prop.name}</span>
                                         {activeFilter && (
@@ -184,24 +192,32 @@ export default function PropertyFilters({ data, activeFilters, onFilterChange, s
                                     </button>
 
                                     {/* Dropdown */}
-                                    <div className="hidden group-hover:block absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[150px]">
-                                        <div className="p-2 max-h-60 overflow-y-auto">
-                                            {options.map(option => (
-                                                <label
-                                                    key={option}
-                                                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={activeFilter?.values?.includes(option) || false}
-                                                        onChange={() => toggleSelectValue(prop.name, prop.type, option)}
-                                                        className="rounded border-gray-300"
-                                                    />
-                                                    <span className="text-xs text-gray-700">{option}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
+                                    {isOpen && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-10"
+                                                onClick={() => setOpenDropdown(null)}
+                                            />
+                                            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[150px]">
+                                                <div className="p-2 max-h-60 overflow-y-auto">
+                                                    {options.map(option => (
+                                                        <label
+                                                            key={option}
+                                                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={activeFilter?.values?.includes(option) || false}
+                                                                onChange={() => toggleSelectValue(prop.name, prop.type, option)}
+                                                                className="rounded border-gray-300"
+                                                            />
+                                                            <span className="text-xs text-gray-700">{option}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             );
                         }
