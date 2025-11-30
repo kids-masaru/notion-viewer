@@ -31,7 +31,17 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
             // Or just use a global key for now, or per-property-set key.
             // Let's use the keys of the properties to form a signature.
             const propertyKeys = Object.keys(task.properties).sort().join(',');
-            const settingsKey = `notion-props-${btoa(propertyKeys).slice(0, 20)}`;
+            // Simple hash function that supports UTF-8 (unlike btoa)
+            const simpleHash = (str: string) => {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    const char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash; // Convert to 32bit integer
+                }
+                return Math.abs(hash).toString(36);
+            };
+            const settingsKey = `notion-props-${simpleHash(propertyKeys)}`;
 
             const saved = localStorage.getItem(settingsKey);
             if (saved) {
@@ -347,7 +357,17 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
 
     const savePropertySettings = (settings: any) => {
         const propertyKeys = Object.keys(task.properties).sort().join(',');
-        const settingsKey = `notion-props-${btoa(propertyKeys).slice(0, 20)}`;
+        // Simple hash function that supports UTF-8 (unlike btoa)
+        const simpleHash = (str: string) => {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return Math.abs(hash).toString(36);
+        };
+        const settingsKey = `notion-props-${simpleHash(propertyKeys)}`;
         localStorage.setItem(settingsKey, JSON.stringify(settings));
     };
 
