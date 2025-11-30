@@ -358,6 +358,7 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                         onTaskClick={setModalTask}
                         visibleProperties={visibleProperties}
                         onStatusChange={updateTaskStatus}
+                        apiKey={settings.apiKey}
                     />
                 );
             }
@@ -367,6 +368,7 @@ export default function Dashboard({ settings, onOpenSettings, onUpdateDatabaseSe
                     onTaskClick={setModalTask}
                     visibleProperties={visibleProperties}
                     onStatusChange={updateTaskStatus}
+                    apiKey={settings.apiKey}
                 />
             );
         }

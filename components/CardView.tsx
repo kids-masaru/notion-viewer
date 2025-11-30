@@ -1,5 +1,6 @@
 import React from 'react';
 import { ExternalLink, Calendar, Tag } from 'lucide-react';
+import { RelationDisplay } from './RelationDisplay';
 
 interface NotionPage {
     id: string;
@@ -14,9 +15,10 @@ interface CardViewProps {
     onTaskClick: (task: NotionPage) => void;
     visibleProperties?: string[];
     onStatusChange?: (pageId: string, propertyName: string, newStatus: string) => void;
+    apiKey: string;
 }
 
-export default function CardView({ items, onTaskClick, visibleProperties, onStatusChange }: CardViewProps) {
+export default function CardView({ items, onTaskClick, visibleProperties, onStatusChange, apiKey }: CardViewProps) {
     const getTitle = (page: NotionPage) => {
         const titleProp = Object.values(page.properties).find((p) => p.id === 'title');
         if (!titleProp) return 'Untitled';
@@ -121,11 +123,7 @@ export default function CardView({ items, onTaskClick, visibleProperties, onStat
                 return text ? <div className="text-[10px] text-gray-500 truncate">{text}</div> : null;
             case 'relation':
                 if (!property.relation || property.relation.length === 0) return null;
-                return (
-                    <div className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700">
-                        📎 {property.relation.length} {property.relation.length === 1 ? 'link' : 'links'}
-                    </div>
-                );
+                return <RelationDisplay relations={property.relation} apiKey={apiKey} />;
             default:
                 return null;
         }
