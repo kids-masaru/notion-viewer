@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { pageId: string } }
+    { params }: { params: Promise<{ pageId: string }> }
 ) {
     try {
         const authHeader = req.headers.get('authorization');
@@ -11,7 +11,7 @@ export async function GET(
         }
         const token = authHeader.replace('Bearer ', '');
 
-        const { pageId } = params;
+        const { pageId } = await params;
         if (!pageId) {
             return NextResponse.json({ error: 'Missing pageId' }, { status: 400 });
         }
