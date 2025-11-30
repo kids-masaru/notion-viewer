@@ -23,31 +23,43 @@ function RelationDisplay({ relations, apiKey }: { relations: any[]; apiKey: stri
 
     useEffect(() => {
         async function fetchRelationNames() {
+            console.log('[RelationDisplay] Called with relations:', relations);
+            console.log('[RelationDisplay] API key present:', !!apiKey);
+
             if (!relations || relations.length === 0) {
+                console.log('[RelationDisplay] No relations found');
                 setLoading(false);
                 return;
             }
 
+            console.log('[RelationDisplay] Starting to fetch', relations.length, 'relation names');
             const names: { [id: string]: string } = {};
 
             // Fetch all relation names in parallel
             await Promise.all(
                 relations.map(async (rel) => {
                     try {
+                        console.log('[RelationDisplay] Fetching relation ID:', rel.id);
                         const res = await fetch(`/api/notion/pages/${rel.id}`, {
                             headers: {
                                 'Authorization': `Bearer ${apiKey}`,
                             },
                         });
 
+                        console.log('[RelationDisplay] Response status:', res.status);
+
                         if (res.ok) {
                             const data = await res.json();
+                            console.log('[RelationDisplay] Page data received for', rel.id);
                             // Extract title from properties
                             const titleProp = Object.values(data.properties).find(
                                 (p: any) => p.type === 'title'
                             ) as any;
                             names[rel.id] = titleProp?.title?.[0]?.plain_text || 'Untitled';
+                            console.log('[RelationDisplay] Extracted name:', names[rel.id]);
                         } else {
+                            const errorText = await res.text();
+                            console.error('[RelationDisplay] Error response:', res.status, errorText);
                             names[rel.id] = 'Error loading';
                         }
                     } catch (e) {
@@ -57,6 +69,7 @@ function RelationDisplay({ relations, apiKey }: { relations: any[]; apiKey: stri
                 })
             );
 
+            console.log('[RelationDisplay] All names fetched:', names);
             setRelationNames(names);
             setLoading(false);
         }
